@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f766e">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg">
+<link rel="apple-touch-icon" href="icon.svg">
+<title>Gastos no Chat</title>
+<style>
+:root{--bg:#f4f6f5;--sf:#fff;--tx:#14201d;--mu:#62736e;--ac:#0f766e;--ab:#d9f2ee;--me:#0f766e;--bd:#dbe3e0;--rd:#c2410c}
+@media (prefers-color-scheme:dark){:root{--bg:#0c1311;--sf:#16201d;--tx:#e8f0ed;--mu:#8fa39d;--ac:#2dd4bf;--ab:#11332e;--me:#115e59;--bd:#27352f;--rd:#fb923c;color-scheme:dark}}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--tx);font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0);padding-bottom:env(safe-area-inset-bottom,0)}
+.hide{display:none!important}
+header{display:flex;gap:6px;padding:10px 12px;background:var(--sf);border-bottom:1px solid var(--bd);align-items:center}
+header button{flex:1;padding:9px;border:0;border-radius:10px;background:transparent;color:var(--mu);font:inherit;font-weight:600}
+header button.on{background:var(--ab);color:var(--ac)}
+header .out{flex:0;color:var(--rd)}
+main{flex:1;overflow-y:auto;padding:12px}
+#chat{display:none;flex-direction:column;gap:8px}#chat.on{display:flex}
+.v{display:none}.v.on{display:block}
+.b{max-width:82%;padding:9px 12px;border-radius:16px;word-wrap:break-word}
+.me{align-self:flex-end;background:var(--me);color:#fff;border-bottom-right-radius:4px}
+.bot{align-self:flex-start;background:var(--sf);border:1px solid var(--bd);border-bottom-left-radius:4px}
+.t{font-size:11px;opacity:.7;margin-top:2px}
+.in{color:var(--ac)}.out{color:var(--rd)}
+.empty{text-align:center;color:var(--mu);margin-top:40px;padding:0 20px}
+#st{padding:6px 14px;font-size:14px;color:var(--mu);background:var(--sf);border-top:1px solid var(--bd)}
+form{display:flex;gap:8px;padding:10px 12px;background:var(--sf);border-top:1px solid var(--bd)}
+input,select,textarea,.btn{font:inherit;border-radius:12px;border:1px solid var(--bd);background:var(--bg);color:var(--tx);padding:12px 14px}
+form input{flex:1;min-width:0;border-radius:24px}
+.rb{width:52px;height:52px;border-radius:50%;border:0;background:var(--ac);color:#fff;font-size:20px;flex:none}
+.rb.mic{background:var(--ab);color:var(--ac);font-size:15px;width:auto;min-width:52px;padding:0 12px;border-radius:26px}
+.rb.rec{background:var(--rd);color:#fff}
+.card{background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:12px;margin-bottom:12px}
+.row{display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--bd)}
+.row:last-child{border:0}
+textarea{width:100%;height:200px;font-size:13px}
+.btn{background:var(--ac);color:#fff;border:0;font-weight:600;width:100%;margin-bottom:10px}
+.btn.alt{background:var(--bd);color:var(--tx)}
+.x{background:none;border:0;color:var(--mu);font-size:18px}
+.big{font-size:26px;font-weight:700}
+#login{margin:auto;width:min(360px,92%);display:flex;flex-direction:column;gap:10px;padding:20px}
+#login h1{margin:0 0 4px;font-size:24px}
+#msg{color:var(--rd);min-height:20px;font-size:14px}
+.link{background:none;border:0;color:var(--ac);font:inherit;padding:4px}
+</style>
+</head>
+<body>
+
+<div id="login" class="hide">
+  <h1>💬 Gastos no Chat</h1>
+  <input id="u" placeholder="Usuário" autocapitalize="none" autocomplete="username">
+  <input id="p" type="password" placeholder="Senha (mín. 6 caracteres)" autocomplete="current-password">
+  <input id="cv" class="hide" placeholder="Código de convite">
+  <button class="btn" id="go">Entrar</button>
+  <div id="msg"></div>
+  <button class="link" id="tg">Não tenho conta · Criar</button>
+</div>
+
+<header id="hd" class="hide">
+  <button data-v="chat" class="on">💬 Chat</button>
+  <button data-v="res">📊 Resumo</button>
+  <button data-v="exp">📤 Exportar</button>
+  <button class="out" id="lo" title="Sair">Sair</button>
+</header>
+<main id="mn" class="hide">
+  <div id="chat" class="on"></div>
+  <div id="res" class="v"></div>
+  <div id="exp" class="v"></div>
+</main>
+<div id="st" class="hide"></div>
+<form id="f" class="hide" autocomplete="off">
+  <input id="i" placeholder="Digite ou grave um áudio: mercado 15" enterkeyhint="send">
+  <button type="button" class="rb mic" id="mic">🎤</button>
+  <button type="submit" class="rb">➤</button>
+</form>
+
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {getAuth,createUserWithEmailAndPassword,signInWithEmailAndPassword,signOut,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {getFirestore,collection,addDoc,deleteDoc,doc,query,orderBy,onSnapshot} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+/* ====== CONFIGURE AQUI (veja LEIA-ME.md) ====== */
+const CFG={apiKey:"AIzaSyCwXJjJIlWipJc9e5Jn-nF-J4i690DzCAE",authDomain:"expense-control-65365.firebaseapp.com",projectId:"expense-control-65365",appId:"1:478670479395:web:92bcc43c377fae4c7ed196"};
+const CODIGO_CONVITE="gc-7k4q-92xm";
+/* ============================================== */
+
+const $=id=>document.getElementById(id);
+const app=initializeApp(CFG),auth=getAuth(app),fs=getFirestore(app);
+let user=null,data=[],unsub=null,sel=mk(Date.now()),signup=false;
+
+/* ---------- Login por usuário e senha ---------- */
+const mail=u=>u.toLowerCase().replace(/[^a-z0-9._-]/g,"")+"@gastos.app";
+$("tg").onclick=()=>{signup=!signup;$("cv").classList.toggle("hide",!signup);$("go").textContent=signup?"Criar conta":"Entrar";$("tg").textContent=signup?"Já tenho conta · Entrar":"Não tenho conta · Criar";$("msg").textContent=""};
+$("go").onclick=async()=>{
+  const u=$("u").value.trim(),p=$("p").value;$("msg").textContent="";
+  if(u.length<3||p.length<6){$("msg").textContent="Usuário (3+ letras) e senha (6+ caracteres).";return}
+  try{
+    if(signup){
+      if($("cv").value.trim()!==CODIGO_CONVITE){$("msg").textContent="Código de convite incorreto.";return}
+      await createUserWithEmailAndPassword(auth,mail(u),p);
+    }else await signInWithEmailAndPassword(auth,mail(u),p);
+  }catch(e){
+    const c=e.code||"";
+    $("msg").textContent=/email-already/.test(c)?"Esse usuário já existe.":/invalid-credential|wrong-password|user-not-found/.test(c)?"Usuário ou senha incorretos.":/weak/.test(c)?"Senha muito fraca.":"Não foi possível entrar ("+c+").";
+  }
+};
+$("lo").onclick=()=>signOut(auth);
+onAuthStateChanged(auth,u=>{
+  user=u;if(unsub){unsub();unsub=null}
+  $("login").classList.toggle("hide",!!u);
+  ["hd","mn","st","f"].forEach(id=>$(id).classList.toggle("hide",!u));
+  if(!u){data=[];return}
+  const q=query(collection(fs,"users",u.uid,"lancamentos"),orderBy("ts","asc"));
+  unsub=onSnapshot(q,s=>{data=s.docs.map(d=>({...d.data(),id:d.id}));render()},()=>status("Sem acesso ao banco. Confira as regras do Firestore."));
+  status("");
+});
+
+/* ---------- Leitura de texto: valor, categoria, entrada/saída ---------- */
+const CATS={"Transporte":"gasolina|posto|combust|uber|99|ônibus|onibus|metrô|metro|estacionamento|pedágio|pedagio|oficina|carro","Mercado":"mercado|supermercado|padaria|açougue|acougue|feira|hortifruti","Alimentação":"restaurante|lanche|almoço|almoco|jantar|ifood|pizza|café|cafe|bar|churrasco","Saúde":"farmácia|farmacia|remédio|remedio|médico|medico|consulta|exame|dentista","Casa":"aluguel|luz|água|agua|internet|gás|gas|condomínio|condominio|reforma","Bebê":"fralda|bebê|bebe|leite|pediatra","Lazer":"cinema|netflix|spotify|jogo|viagem|passeio","Compras":"roupa|sapato|loja|shopping|amazon|shopee"};
+const INC=/\b(recebi|receita|salário|salario|entrada|ganhei|venda|vendi|depósito|deposito)\b/i;
+const norm=s=>s.toLowerCase();
+function cat(t){t=norm(t);for(const k in CATS)if(new RegExp("("+CATS[k]+")").test(t))return k;return"Outros"}
+const money=n=>n.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+function parseD(t){
+  const re=/(r\$\s*)?(\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?|\d+(?:[.,]\d{1,2})?)/gi;let m,best=null,any=null;
+  while((m=re.exec(t))){const raw=/\.\d{3}/.test(m[2])?m[2].replace(/\./g,""):m[2];const v=parseFloat(raw.replace(",","."));if(isNaN(v))continue;const o={v,s:m[0]};any=o;if(m[1]&&!best)best=o}
+  const p=best||any;if(!p)return{v:null,d:t};
+  const d=t.replace(p.s,"").replace(/\breais?\b/i,"").replace(/\s+/g," ").trim();return{v:p.v,d:d||t}
+}
+const NW={"um":1,"uma":1,"dois":2,"duas":2,"três":3,"tres":3,"quatro":4,"cinco":5,"seis":6,"sete":7,"oito":8,"nove":9,"dez":10,"onze":11,"doze":12,"treze":13,"catorze":14,"quatorze":14,"quinze":15,"dezesseis":16,"dezessete":17,"dezoito":18,"dezenove":19,"vinte":20,"trinta":30,"quarenta":40,"cinquenta":50,"sessenta":60,"setenta":70,"oitenta":80,"noventa":90,"cem":100,"cento":100,"duzentos":200,"trezentos":300,"quatrocentos":400,"quinhentos":500,"seiscentos":600,"setecentos":700,"oitocentos":800,"novecentos":900};
+function parseW(t){
+  const tk=t.split(/\s+/),cl=x=>norm(x).replace(/[.,!?]/g,"");
+  for(let i=0;i<tk.length;i++){
+    if(!(cl(tk[i]) in NW)&&cl(tk[i])!=="mil")continue;
+    let j=i,tot=0,cur=0,n=0;
+    while(j<tk.length){const x=cl(tk[j]);
+      if(x==="mil"){tot+=(cur||1)*1000;cur=0;n++;j++}
+      else if(x in NW){cur+=NW[x];n++;j++}
+      else if(x==="e"&&j+1<tk.length&&(cl(tk[j+1]) in NW))j++;
+      else break}
+    const v=tot+cur,rs=j<tk.length&&/^(reais|real)$/.test(cl(tk[j]));
+    if(n&&(rs||n>1||v>=2)&&v>0){const d=tk.slice(0,i).concat(tk.slice(rs?j+1:j)).join(" ").trim();return{v,d:d||t}}
+    i=j}
+  return null
+}
+const parse=t=>{const p=parseD(t);return p.v!=null?p:(parseW(t)||p)};
+
+/* ---------- Salvar lançamento ---------- */
+async function add(raw,voz){
+  raw=raw.trim();if(!raw||!user)return;
+  const p=parse(raw),inc=INC.test(raw)&&p.v!=null;
+  try{await addDoc(collection(fs,"users",user.uid,"lancamentos"),{ts:Date.now(),raw,v:p.v,d:p.d,c:p.v==null?"Sem valor":inc?"Receita":cat(raw),inc,voz:!!voz})}
+  catch(e){status("Não consegui salvar. Confira a conexão.")}
+}
+$("f").onsubmit=e=>{e.preventDefault();const i=$("i");add(i.value);i.value=""};
+
+/* ---------- Áudio: gravar -> enviar -> transcrever -> lançar ---------- */
+let mr=null,chunks=[],tmr=null;
+const mic=$("mic");
+function status(t){$("st").textContent=t;$("st").classList.toggle("hide",!t||!user)}
+function micUI(on,s){mic.classList.toggle("rec",on);mic.textContent=on?"⏹ "+(s||0)+"s":"🎤"}
+mic.onclick=async()=>{
+  if(mr){mr.stop();return}
+  if(!navigator.mediaDevices||!window.MediaRecorder){alert("Este navegador não grava áudio. Use Chrome ou Safari atualizados.");return}
+  try{
+    const st=await navigator.mediaDevices.getUserMedia({audio:true});
+    const mime=["audio/webm;codecs=opus","audio/mp4","audio/webm","audio/ogg"].find(m=>MediaRecorder.isTypeSupported(m))||"";
+    mr=new MediaRecorder(st,mime?{mimeType:mime}:{});chunks=[];
+    mr.ondataavailable=e=>e.data.size&&chunks.push(e.data);
+    mr.onstop=()=>{st.getTracks().forEach(t=>t.stop());clearInterval(tmr);const type=mr.mimeType||mime||"audio/webm";mr=null;micUI(false);
+      const blob=new Blob(chunks,{type});if(blob.size<1500){status("Áudio muito curto. Tente de novo.");return}enviar(blob,type)};
+    mr.start();const t0=Date.now();micUI(true,0);status("Gravando… toque em ⏹ para enviar.");
+    tmr=setInterval(()=>{const s=Math.floor((Date.now()-t0)/1000);micUI(true,s);if(s>=60)mr.stop()},500);
+  }catch(e){alert("Microfone bloqueado. Libere a permissão do microfone para este site e tente de novo.")}
+};
+async function enviar(blob,mime){
+  status("Transcrevendo o áudio…");mic.disabled=true;
+  try{
+    const b64=await new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok(r.result.split(",")[1]);r.onerror=no;r.readAsDataURL(blob)});
+    const token=await user.getIdToken();
+    const r=await fetch("/.netlify/functions/transcrever",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({audio:b64,mime,token})});
+    const j=await r.json();
+    if(!r.ok||!j.texto)throw new Error(j.erro||"sem texto");
+    await add(j.texto,true);status("");
+  }catch(e){status("Não consegui transcrever: "+e.message+" Digite o gasto.")}
+  mic.disabled=false;
+}
+
+/* ---------- Telas ---------- */
+function mk(ts){const d=new Date(ts);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")}
+const mlabel=k=>{const p=k.split("-");return new Date(p[0],p[1]-1,1).toLocaleDateString("pt-BR",{month:"long",year:"numeric"})};
+const fmtT=ts=>{const d=new Date(ts);return d.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})+" "+d.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})};
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const tabs=document.querySelectorAll("header button[data-v]");
+tabs.forEach(b=>b.onclick=()=>{tabs.forEach(x=>x.classList.toggle("on",x===b));["chat","res","exp"].forEach(v=>$(v).classList.toggle("on",v===b.dataset.v));$("f").classList.toggle("hide",b.dataset.v!=="chat");render()});
+function renderChat(){
+  const c=$("chat");
+  if(!data.length){c.innerHTML='<div class="empty">Escreva ou grave o gasto, como numa conversa.<br><br>“mercado 15”<br>“posto de gasolina R$200”<br>“recebi 1500 de venda”</div>';return}
+  c.innerHTML=data.map(e=>{
+    const r=e.v==null?"⚠️ Sem valor — anotei como texto":"✓ "+(e.inc?"Entrada ":"Saída ")+`<b class="${e.inc?"in":"out"}">${money(e.v)}</b> · ${esc(e.c)}`;
+    return `<div class="b me">${esc(e.raw)}<div class="t">${fmtT(e.ts)}${e.voz?" · 🎤 áudio":""}</div></div><div class="b bot">${r}</div>`}).join("");
+  const m=$("mn");m.scrollTop=m.scrollHeight;
+}
+function months(){const s={};data.forEach(e=>s[mk(e.ts)]=1);s[mk(Date.now())]=1;return Object.keys(s).sort().reverse()}
+const monthSel=()=>`<select id="ms" style="width:100%;margin-bottom:12px">${months().map(k=>`<option value="${k}"${k===sel?" selected":""}>${mlabel(k)}</option>`).join("")}</select>`;
+function calc(){const L=data.filter(e=>mk(e.ts)===sel);let out=0,inn=0;const by={};L.forEach(e=>{if(e.v==null)return;if(e.inc)inn+=e.v;else{out+=e.v;by[e.c]=(by[e.c]||0)+e.v}});return{L,out,inn,by}}
+function renderRes(){
+  const c=calc(),el=$("res"),cats=Object.keys(c.by).sort((a,b)=>c.by[b]-c.by[a]);
+  el.innerHTML=monthSel()+`<div class="card"><div style="color:var(--mu)">Saídas</div><div class="big out">${money(c.out)}</div><div style="color:var(--mu);margin-top:6px">Entradas: <b class="in">${money(c.inn)}</b> · Saldo: <b>${money(c.inn-c.out)}</b></div></div>`+
+  `<div class="card"><b>Por categoria</b>${cats.length?cats.map(k=>`<div class="row"><span>${esc(k)}</span><span>${money(c.by[k])} · ${Math.round(c.by[k]/c.out*100)}%</span></div>`).join(""):'<div class="empty">Nada neste mês.</div>'}</div>`+
+  `<div class="card"><b>Lançamentos</b>${c.L.slice().reverse().map(e=>`<div class="row"><span>${esc(e.d)}<br><small style="color:var(--mu)">${fmtT(e.ts)} · ${esc(e.c)}${e.voz?" · 🎤":""}</small></span><span class="${e.inc?"in":"out"}">${e.v==null?"—":money(e.v)} <button class="x" data-id="${e.id}" title="Apagar">×</button></span></div>`).join("")}</div>`;
+  $("ms").onchange=function(){sel=this.value;renderRes()};
+  el.querySelectorAll(".x").forEach(b=>b.onclick=async()=>{if(confirm("Apagar este lançamento?"))try{await deleteDoc(doc(fs,"users",user.uid,"lancamentos",b.dataset.id))}catch(e){alert("Não foi possível apagar.")}});
+}
+function report(){
+  const c=calc();
+  let t="RELATÓRIO DE GASTOS — "+mlabel(sel).toUpperCase()+"\nFormato: data hora | tipo | categoria | valor | descrição | mensagem original\n\n";
+  c.L.forEach(e=>{t+=`${fmtT(e.ts)} | ${e.v==null?"sem valor":e.inc?"entrada":"saída"} | ${e.c} | ${e.v==null?"-":money(e.v)} | ${e.d} | “${e.raw}”${e.voz?" (áudio)":""}\n`});
+  t+=`\nTOTAL SAÍDAS: ${money(c.out)}\nTOTAL ENTRADAS: ${money(c.inn)}\nSALDO: ${money(c.inn-c.out)}\n\nPOR CATEGORIA:\n`;
+  Object.keys(c.by).sort((a,b)=>c.by[b]-c.by[a]).forEach(k=>t+=`- ${k}: ${money(c.by[k])}\n`);
+  return t;
+}
+function renderExp(){
+  const el=$("exp");
+  el.innerHTML=monthSel()+'<button class="btn" id="cp">📋 Copiar relatório do mês</button><button class="btn alt" id="dl">💾 Baixar arquivo .txt</button><textarea id="ta" readonly></textarea><p style="color:var(--mu);font-size:14px">Envie o arquivo (ou cole o texto) na IA e peça: “analise meus gastos, ache padrões e sugira cortes”.</p>';
+  const ta=$("ta");ta.value=report();
+  $("ms").onchange=function(){sel=this.value;renderExp()};
+  $("cp").onclick=async()=>{try{await navigator.clipboard.writeText(report())}catch(e){ta.select();document.execCommand("copy")}$("cp").textContent="✓ Copiado!"};
+  $("dl").onclick=()=>{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([report()],{type:"text/plain;charset=utf-8"}));a.download="gastos-"+sel+".txt";a.click()};
+}
+function render(){const on=document.querySelector("header .on").dataset.v;on==="chat"?renderChat():on==="res"?renderRes():renderExp()}
+
+if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
+</script>
+</body>
+</html>
