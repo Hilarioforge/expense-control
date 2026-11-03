@@ -18,8 +18,7 @@ Cada pessoa tem **usuário e senha** e vê **só os próprios gastos**. O áudio
 1. Suba esta pasta num repositório do GitHub e conecte no Netlify (como no VAULT), ou arraste a pasta no Netlify.
 2. Site settings → **Environment variables**, crie:
    - `OPENAI_API_KEY` = sua chave da OpenAI
-   - `FIREBASE_API_KEY` = o `apiKey` do firebaseConfig
-3. Faça um novo deploy depois de criar as variáveis.
+3. Faça um novo deploy depois de criar a variável.
 4. Firebase → Authentication → Configurações → **Domínios autorizados** → adicione o endereço do seu site Netlify.
 
 ## 4) Criar os usuários

@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0f766e">
+<meta name="description" content="Controle pessoal de entradas e gastos por texto ou áudio.">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon.svg">
 <link rel="apple-touch-icon" href="icon.svg">
@@ -109,6 +110,7 @@ $("go").onclick=async()=>{
     $("msg").textContent=/email-already/.test(c)?"Esse usuário já existe.":/invalid-credential|wrong-password|user-not-found/.test(c)?"Usuário ou senha incorretos.":/weak/.test(c)?"Senha muito fraca.":"Não foi possível entrar ("+c+").";
   }
 };
+["u","p","cv"].forEach(id=>$(id).addEventListener("keydown",e=>{if(e.key==="Enter")$("go").click()}));
 $("lo").onclick=()=>signOut(auth);
 onAuthStateChanged(auth,u=>{
   user=u;if(unsub){unsub();unsub=null}
