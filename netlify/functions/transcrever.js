@@ -31,10 +31,18 @@ exports.handler = async (event) => {
     const buf = Buffer.from(audio, "base64");
     if (buf.length > 4 * 1024 * 1024) return res(413, { erro: "Áudio muito longo (máx. 60s)." });
 
-    const ext = /mp4|m4a|aac/.test(mime || "") ? "m4a" : /ogg/.test(mime || "") ? "ogg" : "webm";
+    const ext = /mp4|m4a|aac/.test(mime || "")
+      ? "m4a"
+      : /ogg/.test(mime || "")
+        ? "ogg"
+        : /wav/.test(mime || "")
+          ? "wav"
+          : /mpeg|mp3/.test(mime || "")
+            ? "mp3"
+            : "webm";
     const fd = new FormData();
     fd.append("file", new Blob([buf], { type: mime || "audio/webm" }), `audio.${ext}`);
-    fd.append("model", "whisper-1");
+    fd.append("model", "gpt-transcribe");
     fd.append("language", "pt");
     fd.append("prompt", "Lançamento de gasto em reais. Exemplos: mercado quinze reais; posto de gasolina duzentos reais.");
 
