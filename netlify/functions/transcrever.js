@@ -44,7 +44,7 @@ exports.handler = async (event) => {
     fd.append("file", new Blob([buf], { type: mime || "audio/webm" }), `audio.${ext}`);
     fd.append("model", "gpt-transcribe");
     fd.append("language", "pt");
-    fd.append("prompt", "Lançamento de gasto em reais. Exemplos: mercado quinze reais; posto de gasolina duzentos reais.");
+    fd.append("prompt", "Lançamento de gasto em reais. Nomes possíveis: Andrielle, Davi, Acsa e Tiago. Exemplos: mercado quinze reais; Andrielle cinquenta reais; posto de gasolina duzentos reais.");
 
     const r = await fetch("https://api.openai.com/v1/audio/transcriptions", {
       method: "POST",
