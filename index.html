@@ -44,7 +44,7 @@ textarea{width:100%;height:200px;font-size:13px}
 .btn.alt{background:var(--bd);color:var(--tx)}
 .x{background:none;border:0;color:var(--mu);font-size:18px}
 .big{font-size:26px;font-weight:700}
-#login{margin:auto;width:min(360px,92%);display:flex;flex-direction:column;gap:10px;padding:20px}
+#login{margin:auto;width:min(360px,92%);display:flex;flex-direction:column;gap:10px;padding:20px;background:transparent;border:0}
 #login h1{margin:0 0 4px;font-size:24px}
 #msg{color:var(--rd);min-height:20px;font-size:14px}
 .link{background:none;border:0;color:var(--ac);font:inherit;padding:4px}
@@ -52,15 +52,15 @@ textarea{width:100%;height:200px;font-size:13px}
 </head>
 <body>
 
-<div id="login" class="hide">
+<form id="login" class="hide" autocomplete="on">
   <h1>💬 Gastos no Chat</h1>
-  <input id="u" placeholder="Usuário" autocapitalize="none" autocomplete="username">
-  <input id="p" type="password" placeholder="Senha (mín. 6 caracteres)" autocomplete="current-password">
-  <input id="cv" class="hide" placeholder="Código de convite">
-  <button class="btn" id="go">Entrar</button>
+  <input id="u" name="username" placeholder="Usuário" autocapitalize="none" autocomplete="username">
+  <input id="p" name="password" type="password" placeholder="Senha (mín. 6 caracteres)" autocomplete="current-password">
+  <input id="cv" name="invite-code" class="hide" placeholder="Código de convite" autocomplete="off">
+  <button class="btn" id="go" type="submit">Entrar</button>
   <div id="msg"></div>
-  <button class="link" id="tg">Não tenho conta · Criar</button>
-</div>
+  <button class="link" id="tg" type="button">Não tenho conta · Criar</button>
+</form>
 
 <header id="hd" class="hide">
   <button data-v="chat" class="on">💬 Chat</button>
@@ -82,7 +82,7 @@ textarea{width:100%;height:200px;font-size:13px}
 
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import {getAuth,createUserWithEmailAndPassword,signInWithEmailAndPassword,signOut,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {getAuth,createUserWithEmailAndPassword,signInWithEmailAndPassword,signOut,onAuthStateChanged,setPersistence,browserLocalPersistence} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {getFirestore,collection,addDoc,deleteDoc,doc,query,orderBy,onSnapshot} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 /* ====== CONFIGURE AQUI (veja LEIA-ME.md) ====== */
@@ -93,24 +93,28 @@ const CODIGO_CONVITE="gc-7k4q-92xm";
 const $=id=>document.getElementById(id);
 const app=initializeApp(CFG),auth=getAuth(app),fs=getFirestore(app);
 let user=null,data=[],unsub=null,sel=mk(Date.now()),signup=false;
+const LAST_USER_KEY="gastos-last-user";
+try{$("u").value=localStorage.getItem(LAST_USER_KEY)||""}catch{}
 
 /* ---------- Login por usuário e senha ---------- */
 const mail=u=>u.toLowerCase().replace(/[^a-z0-9._-]/g,"")+"@gastos.app";
-$("tg").onclick=()=>{signup=!signup;$("cv").classList.toggle("hide",!signup);$("go").textContent=signup?"Criar conta":"Entrar";$("tg").textContent=signup?"Já tenho conta · Entrar":"Não tenho conta · Criar";$("msg").textContent=""};
-$("go").onclick=async()=>{
+$("tg").onclick=()=>{signup=!signup;$("cv").classList.toggle("hide",!signup);$("p").autocomplete=signup?"new-password":"current-password";$("go").textContent=signup?"Criar conta":"Entrar";$("tg").textContent=signup?"Já tenho conta · Entrar":"Não tenho conta · Criar";$("msg").textContent=""};
+$("login").onsubmit=async e=>{
+  e.preventDefault();
   const u=$("u").value.trim(),p=$("p").value;$("msg").textContent="";
   if(u.length<3||p.length<6){$("msg").textContent="Usuário (3+ letras) e senha (6+ caracteres).";return}
   try{
+    await setPersistence(auth,browserLocalPersistence);
     if(signup){
       if($("cv").value.trim()!==CODIGO_CONVITE){$("msg").textContent="Código de convite incorreto.";return}
       await createUserWithEmailAndPassword(auth,mail(u),p);
     }else await signInWithEmailAndPassword(auth,mail(u),p);
+    try{localStorage.setItem(LAST_USER_KEY,u)}catch{}
   }catch(e){
     const c=e.code||"";
     $("msg").textContent=/email-already/.test(c)?"Esse usuário já existe.":/invalid-credential|wrong-password|user-not-found/.test(c)?"Usuário ou senha incorretos.":/weak/.test(c)?"Senha muito fraca.":"Não foi possível entrar ("+c+").";
   }
 };
-["u","p","cv"].forEach(id=>$(id).addEventListener("keydown",e=>{if(e.key==="Enter")$("go").click()}));
 $("lo").onclick=()=>signOut(auth);
 onAuthStateChanged(auth,u=>{
   user=u;if(unsub){unsub();unsub=null}
