@@ -131,7 +131,18 @@ onAuthStateChanged(auth,u=>{
 });
 
 /* ---------- Leitura de texto: valor, categoria, entrada/saída ---------- */
-const CATS={"Uber":"\\buber\\b","Transporte":"gasolina|posto|combust|99|ônibus|onibus|metrô|metro|estacionamento|pedágio|pedagio|oficina|carro|veículo|veiculo|mecânico|mecanico|suspensão|suspensao|pneu|revisão|revisao|manutenção|manutencao|peça|peca|ipva|seguro do carro","Mercado":"mercado|supermercado|padaria|açougue|acougue|feira|hortifruti","Alimentação":"restaurante|lanche|almoço|almoco|jantar|ifood|pizza|café|cafe|bar|churrasco","Saúde":"farmácia|farmacia|remédio|remedio|médico|medico|consulta|exame|dentista|\\bamil\\b|convênio|convenio|plano de saúde|plano de saude","Casa":"aluguel|luz|água|agua|internet|gás|gas|condomínio|condominio|reforma","Bebê":"fralda|bebê|bebe|leite|pediatra","Lazer":"cinema|netflix|spotify|jogo|viagem|passeio","Compras":"roupa|sapato|loja|shopping|amazon|shopee"};
+const CATS={
+  "Uber":"\\buber\\b",
+  "Pausa para o café":"padaria|cafeteria|café da manhã|cafe da manha|lanche da tarde|pão de queijo|pao de queijo|capuccino|cappuccino",
+  "Transporte":"gasolina|posto|combustível|combustivel|app 99|corrida (?:da )?99|99 pop|táxi|taxi|ônibus|onibus|metrô|metro|estacionamento|pedágio|pedagio|oficina|carro|veículo|veiculo|moto|mecânico|mecanico|suspensão|suspensao|pneu|revisão|revisao|manutenção|manutencao|autopeça|autopeca|peça do carro|peca do carro|ipva|seguro do carro",
+  "Mercado":"mercado|supermercado|atacadão|atacadao|açougue|acougue|feira|hortifruti|sacolão|sacolao",
+  "Alimentação":"restaurante|comida|refeição|refeicao|marmita|lanche|almoço|almoco|jantar|ifood|delivery|pizza|\\bbar\\b|churrasco",
+  "Saúde":"farmácia|farmacia|remédio|remedio|médico|medico|consulta|exame|dentista|hospital|laboratório|laboratorio|\\bamil\\b|convênio|convenio|plano de saúde|plano de saude",
+  "Casa":"aluguel|energia|conta de luz|conta de água|conta de agua|internet|gás|gas|condomínio|condominio|reforma|material de construção|material de construcao",
+  "Bebê":"fralda|bebê|bebe|leite infantil|pediatra",
+  "Lazer":"cinema|netflix|spotify|jogo|viagem|passeio|show|parque",
+  "Compras":"roupa|sapato|calçado|calcado|\\bloja\\b|shopping|amazon|shopee"
+};
 const HERNANI_EMAIL="ernanialmeida@gastos.app";
 const HERNANI_CATS={
   "Andrielle":"andrielle|andriele|andrieli|esposa",
