@@ -39,6 +39,10 @@ form input{flex:1;min-width:0;border-radius:24px}
 .card{background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:12px;margin-bottom:12px}
 .row{display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--bd)}
 .row:last-child{border:0}
+.catrow{width:100%;background:transparent;color:var(--tx);font:inherit;text-align:left;border:0;border-bottom:1px solid var(--bd);cursor:pointer}
+.catrow span:last-child{color:var(--mu);white-space:nowrap}
+.filterbar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.filterbar .link{font-size:14px}
 textarea{width:100%;height:200px;font-size:13px}
 .btn{background:var(--ac);color:#fff;border:0;font-weight:600;width:100%;margin-bottom:10px}
 .btn.alt{background:var(--bd);color:var(--tx)}
@@ -92,7 +96,7 @@ const CODIGO_CONVITE="gc-7k4q-92xm";
 
 const $=id=>document.getElementById(id);
 const app=initializeApp(CFG),auth=getAuth(app),fs=getFirestore(app);
-let user=null,data=[],unsub=null,sel=mk(Date.now()),signup=false;
+let user=null,data=[],unsub=null,sel=mk(Date.now()),signup=false,catFilter=null;
 const LAST_USER_KEY="gastos-last-user";
 try{$("u").value=localStorage.getItem(LAST_USER_KEY)||""}catch{}
 
@@ -127,10 +131,11 @@ onAuthStateChanged(auth,u=>{
 });
 
 /* ---------- Leitura de texto: valor, categoria, entrada/saída ---------- */
-const CATS={"Uber":"\\buber\\b","Transporte":"gasolina|posto|combust|99|ônibus|onibus|metrô|metro|estacionamento|pedágio|pedagio|oficina|carro|veículo|veiculo|mecânico|mecanico|suspensão|suspensao|pneu|revisão|revisao|manutenção|manutencao|peça|peca|ipva|seguro do carro","Mercado":"mercado|supermercado|padaria|açougue|acougue|feira|hortifruti","Alimentação":"restaurante|lanche|almoço|almoco|jantar|ifood|pizza|café|cafe|bar|churrasco","Saúde":"farmácia|farmacia|remédio|remedio|médico|medico|consulta|exame|dentista","Casa":"aluguel|luz|água|agua|internet|gás|gas|condomínio|condominio|reforma","Bebê":"fralda|bebê|bebe|leite|pediatra","Lazer":"cinema|netflix|spotify|jogo|viagem|passeio","Compras":"roupa|sapato|loja|shopping|amazon|shopee"};
+const CATS={"Uber":"\\buber\\b","Transporte":"gasolina|posto|combust|99|ônibus|onibus|metrô|metro|estacionamento|pedágio|pedagio|oficina|carro|veículo|veiculo|mecânico|mecanico|suspensão|suspensao|pneu|revisão|revisao|manutenção|manutencao|peça|peca|ipva|seguro do carro","Mercado":"mercado|supermercado|padaria|açougue|acougue|feira|hortifruti","Alimentação":"restaurante|lanche|almoço|almoco|jantar|ifood|pizza|café|cafe|bar|churrasco","Saúde":"farmácia|farmacia|remédio|remedio|médico|medico|consulta|exame|dentista|\\bamil\\b|convênio|convenio|plano de saúde|plano de saude","Casa":"aluguel|luz|água|agua|internet|gás|gas|condomínio|condominio|reforma","Bebê":"fralda|bebê|bebe|leite|pediatra","Lazer":"cinema|netflix|spotify|jogo|viagem|passeio","Compras":"roupa|sapato|loja|shopping|amazon|shopee"};
 const HERNANI_EMAIL="ernanialmeida@gastos.app";
 const HERNANI_CATS={
-  "Família":"andrielle|andriele|andrieli|esposa|davi|\\bfilho\\b",
+  "Andrielle":"andrielle|andriele|andrieli|esposa",
+  "Davi":"\\bdavi\\b|\\bfilho\\b",
   "Acsa filha":"acsa|aksa|axa|\\bfilha\\b",
   "Tiago genro":"tiago|thiago|\\bgenro\\b"
 };
@@ -224,10 +229,14 @@ const monthSel=()=>`<select id="ms" style="width:100%;margin-bottom:12px">${mont
 function calc(){const L=data.filter(e=>mk(e.ts)===sel);let out=0,inn=0;const by={};L.forEach(e=>{if(e.v==null)return;if(e.inc)inn+=e.v;else{out+=e.v;by[e.c]=(by[e.c]||0)+e.v}});return{L,out,inn,by}}
 function renderRes(){
   const c=calc(),el=$("res"),cats=Object.keys(c.by).sort((a,b)=>c.by[b]-c.by[a]);
+  if(catFilter&&!cats.includes(catFilter))catFilter=null;
+  const shown=catFilter?c.L.filter(e=>e.c===catFilter):c.L;
   el.innerHTML=monthSel()+`<div class="card"><div style="color:var(--mu)">Saídas</div><div class="big out">${money(c.out)}</div><div style="color:var(--mu);margin-top:6px">Entradas: <b class="in">${money(c.inn)}</b> · Saldo: <b>${money(c.inn-c.out)}</b></div></div>`+
-  `<div class="card"><b>Por categoria</b>${cats.length?cats.map(k=>`<div class="row"><span>${esc(k)}</span><span>${money(c.by[k])} · ${Math.round(c.by[k]/c.out*100)}%</span></div>`).join(""):'<div class="empty">Nada neste mês.</div>'}</div>`+
-  `<div class="card"><b>Lançamentos</b>${c.L.slice().reverse().map(e=>`<div class="row"><span>${esc(e.d)}<br><small style="color:var(--mu)">${fmtT(e.ts)} · ${esc(e.c)}${e.voz?" · 🎤":""}</small></span><span class="${e.inc?"in":"out"}">${e.v==null?"—":money(e.v)} <button class="x" data-id="${e.id}" title="Apagar">×</button></span></div>`).join("")}</div>`;
-  $("ms").onchange=function(){sel=this.value;renderRes()};
+  `<div class="card"><b>Por categoria</b>${cats.length?cats.map(k=>`<button class="row catrow" data-cat="${esc(k)}"><span>${esc(k)}</span><span>${money(c.by[k])} · ${Math.round(c.by[k]/c.out*100)}% ›</span></button>`).join(""):'<div class="empty">Nada neste mês.</div>'}</div>`+
+  `<div class="card"><div class="filterbar"><b>${catFilter?`Movimentações · ${esc(catFilter)}`:"Todas as movimentações"}</b>${catFilter?'<button class="link" id="clearCat">Mostrar todas</button>':""}</div>${shown.slice().reverse().map(e=>`<div class="row"><span>${esc(e.d)}<br><small style="color:var(--mu)">${fmtT(e.ts)} · ${esc(e.c)}${e.voz?" · 🎤":""}</small></span><span class="${e.inc?"in":"out"}">${e.v==null?"—":money(e.v)} <button class="x" data-id="${e.id}" title="Apagar">×</button></span></div>`).join("")}</div>`;
+  $("ms").onchange=function(){sel=this.value;catFilter=null;renderRes()};
+  el.querySelectorAll(".catrow").forEach(b=>b.onclick=()=>{catFilter=catFilter===b.dataset.cat?null:b.dataset.cat;renderRes()});
+  if($("clearCat"))$("clearCat").onclick=()=>{catFilter=null;renderRes()};
   el.querySelectorAll(".x").forEach(b=>b.onclick=async()=>{if(confirm("Apagar este lançamento?"))try{await deleteDoc(doc(fs,"users",user.uid,"lancamentos",b.dataset.id))}catch(e){alert("Não foi possível apagar.")}});
 }
 function report(){
