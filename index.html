@@ -137,7 +137,7 @@ const HERNANI_CATS={
 const INC=/\b(recebi|receita|salário|salario|entrada|ganhei|venda|vendi|depósito|deposito)\b/i;
 const norm=s=>s.toLowerCase();
 function findCat(t,cats){for(const k in cats)if(new RegExp("("+cats[k]+")","i").test(t))return k;return null}
-function cat(t){t=norm(t);if(user?.email===HERNANI_EMAIL){const personal=findCat(t,HERNANI_CATS);if(personal)return personal}return findCat(t,CATS)||"Outros"}
+function cat(t){t=norm(t);if(findCat(t,{"Uber":CATS.Uber}))return "Uber";if(user?.email===HERNANI_EMAIL){const personal=findCat(t,HERNANI_CATS);if(personal)return personal}return findCat(t,CATS)||"Outros"}
 const money=n=>n.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
 function parseD(t){
   const re=/(r\$\s*)?(\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?|\d+(?:[.,]\d{1,2})?)/gi;let m,best=null,any=null;
